@@ -16,9 +16,7 @@ export function initializeFirebase() {
 
   const app = initializeApp(firebaseConfig);
 
-  initializeFirestore(app, {
-    experimentalForceLongPolling: true,
-  });
+  initializeFirestore(app, {});
 
   return getSdks(app);
 }

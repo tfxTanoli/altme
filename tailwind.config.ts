@@ -1,5 +1,5 @@
 
-import type {Config} from 'tailwindcss';
+import type { Config } from 'tailwindcss';
 import plugin from 'tailwindcss/plugin';
 
 const fadePlugin = plugin(({ addUtilities }) => {
@@ -9,8 +9,8 @@ const fadePlugin = plugin(({ addUtilities }) => {
       'mask-image': 'linear-gradient(to bottom, white 80%, transparent 100%)',
     },
     '.vertical-fade': {
-        '-webkit-mask-image': 'linear-gradient(to bottom, transparent 0%, white 20%, white 80%, transparent 100%)',
-        'mask-image': 'linear-gradient(to bottom, transparent 0%, white 20%, white 80%, transparent 100%)',
+      '-webkit-mask-image': 'linear-gradient(to bottom, transparent 0%, white 20%, white 80%, transparent 100%)',
+      'mask-image': 'linear-gradient(to bottom, transparent 0%, white 20%, white 80%, transparent 100%)',
     },
   });
 });
@@ -32,8 +32,8 @@ export default {
     },
     extend: {
       fontFamily: {
-        body: ['PT Sans', 'sans-serif'],
-        headline: ['Poppins', 'sans-serif'],
+        body: ['var(--font-pt-sans)', 'sans-serif'],
+        headline: ['var(--font-poppins)', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {

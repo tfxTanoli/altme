@@ -8,6 +8,7 @@ import { collection, serverTimestamp, doc, writeBatch, arrayUnion } from 'fireba
 import { useToast } from './use-toast';
 import type { ProjectRequest, ContentDelivery, ReferenceMedia } from '@/lib/types';
 import { captureVideoFrame } from '@/lib/utils';
+import { sendNotification } from '@/services/notifications';
 
 export const useContentDeliveryUpload = (
     request: ProjectRequest | null,
@@ -41,7 +42,7 @@ export const useContentDeliveryUpload = (
 
         const requestId = request.id;
         let uploadSuccessCount = 0;
-        
+
         try {
             const mediaToUpload: ReferenceMedia[] = [];
 
@@ -70,8 +71,8 @@ export const useContentDeliveryUpload = (
                     });
                     uploadSuccessCount++;
                 } catch (uploadError) {
-                     console.error(`Error uploading file ${file.name}:`, uploadError);
-                     toast({
+                    console.error(`Error uploading file ${file.name}:`, uploadError);
+                    toast({
                         variant: 'destructive',
                         title: `Upload failed for ${file.name}`,
                         description: 'Please try again.',
@@ -80,8 +81,8 @@ export const useContentDeliveryUpload = (
             }
 
             if (mediaToUpload.length > 0) {
-                 const batch = writeBatch(firestore);
-                 const existingDelivery = deliveries.length > 0 ? deliveries[0] : null;
+                const batch = writeBatch(firestore);
+                const existingDelivery = deliveries.length > 0 ? deliveries[0] : null;
 
                 if (existingDelivery) {
                     // Add to existing delivery
@@ -109,6 +110,14 @@ export const useContentDeliveryUpload = (
                 }
 
                 await batch.commit();
+
+                await sendNotification(request.userId, {
+                    title: 'Delivery Submitted',
+                    message: `${uploadSuccessCount} file(s) have been delivered for "${request.title}".`,
+                    type: 'delivery_submitted',
+                    link: `/requests/${requestId}`,
+                    relatedId: requestId
+                });
             }
 
             if (uploadSuccessCount > 0) {

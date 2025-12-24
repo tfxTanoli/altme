@@ -36,6 +36,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import { sendNotification } from '@/services/notifications';
 
 interface ChatViewProps {
   partner?: User;
@@ -46,8 +47,8 @@ interface ChatViewProps {
 }
 
 type Preview = {
-    url: string;
-    type: 'image' | 'video';
+  url: string;
+  type: 'image' | 'video';
 };
 
 export const ChatView: React.FC<ChatViewProps> = ({
@@ -60,12 +61,12 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const { user: currentUser } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  
+
   const [messages, setMessages] = React.useState<ChatMessage[]>([]);
   const [isSending, setIsSending] = React.useState(false);
   const [newMessage, setNewMessage] = React.useState('');
   const viewportRef = React.useRef<HTMLDivElement>(null);
-  
+
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
   const [preview, setPreview] = React.useState<Preview | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -78,13 +79,13 @@ export const ChatView: React.FC<ChatViewProps> = ({
       setMessages([]);
       return;
     }
-  
+
     const roomIds = chatRoom.isUnified ? chatRoom.sourceRoomIds : [chatRoom.id];
     if (!roomIds || roomIds.length === 0) {
       setMessages([]);
       return;
     }
-  
+
     // Create listeners for all source rooms
     const unsubscribes = roomIds.map(roomId => {
       const messagesQuery = query(
@@ -103,7 +104,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
         });
       });
     });
-  
+
     const fetchAllMessages = async () => {
       try {
         const allMessages: ChatMessage[] = [];
@@ -125,18 +126,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
         console.error("Error fetching all messages:", error);
       }
     };
-  
+
     fetchAllMessages();
-  
+
     return () => unsubscribes.forEach(unsub => unsub());
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatRoom, firestore, toast]);
-  
+
   React.useEffect(() => {
     if (viewportRef.current) {
       setTimeout(() => {
-        if(viewportRef.current) {
-            viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+        if (viewportRef.current) {
+          viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
         }
       }, 100);
     }
@@ -149,140 +150,156 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
     const currentPartner = partner || (partners && partners.length > 0 ? partners[0] : null);
     if (!currentPartner) return;
-    
+
     setIsSending(true);
-  
+
     try {
-        let targetRoomId: string | null;
+      let targetRoomId: string | null;
 
-        if (chatRoom.isProjectChat) {
-            targetRoomId = chatRoom.id;
-        } else {
-            // Find or create a non-project chat room to send the message
-            targetRoomId = await runTransaction(firestore, async (transaction) => {
-                const participants = [currentUser.uid, currentPartner.id].sort();
-                
-                // Query for an existing direct chat
-                const chatQuery = query(
-                    collection(firestore, 'chatRooms'),
-                    where('isProjectChat', '==', false),
-                    where('participantIds', '==', participants)
-                );
-                const chatSnap = await getDocs(chatQuery);
-                
-                if (!chatSnap.empty) {
-                    return chatSnap.docs[0].id;
-                } else {
-                    // If no direct chat exists, create one
-                    const newRoomRef = doc(collection(firestore, 'chatRooms'));
-                    const newRoomData: Omit<ChatRoom, 'id'> = {
-                        participantIds: participants,
-                        user1Id: participants[0],
-                        user2Id: participants[1],
-                        isProjectChat: false,
-                        lastMessage: null,
-                    };
-                    transaction.set(newRoomRef, { ...newRoomData, id: newRoomRef.id });
-                    return newRoomRef.id;
-                }
-            });
-        }
+      if (chatRoom.isProjectChat) {
+        targetRoomId = chatRoom.id;
+      } else {
+        // Find or create a non-project chat room to send the message
+        targetRoomId = await runTransaction(firestore, async (transaction) => {
+          const participants = [currentUser.uid, currentPartner.id].sort();
 
-        if (!targetRoomId) {
-            throw new Error("Could not find or create a chat room for sending the message.");
-        }
-        
-        const uploadedMedia = await uploadFiles(selectedFile ? [selectedFile] : [], targetRoomId);
-        const batch = writeBatch(firestore);
-        
-        const messageRef = doc(collection(firestore, 'chatRooms', targetRoomId, 'chatMessages'));
-        
-        const messageData: Partial<ChatMessage> = {
-            id: messageRef.id,
-            chatRoomId: targetRoomId,
-            senderId: currentUser.uid,
-            timestamp: serverTimestamp(),
-        };
+          // Query for an existing direct chat
+          const chatQuery = query(
+            collection(firestore, 'chatRooms'),
+            where('isProjectChat', '==', false),
+            where('participantIds', '==', participants)
+          );
+          const chatSnap = await getDocs(chatQuery);
 
-        if (text) messageData.message = text;
-        if (uploadedMedia.length > 0) {
-            const media = uploadedMedia[0];
-            messageData.mediaType = media.type;
-            messageData.mediaName = media.name;
-            if (media.type === 'image') {
-                messageData.imageUrl = media.url;
-            } else {
-                messageData.videoUrl = media.url;
-                messageData.thumbnailUrl = media.thumbnailUrl || undefined;
-            }
-        }
-        
-        batch.set(messageRef, messageData);
-  
-        const roomRef = doc(firestore, 'chatRooms', targetRoomId);
-        let lastMessageText = text;
-        if (uploadedMedia.length > 0) {
-            lastMessageText = uploadedMedia[0].type === 'image' ? 'Sent an image' : 'Sent a video';
-            if(text) lastMessageText = text;
-        }
-
-        batch.update(roomRef, {
-          lastMessage: {
-            text: lastMessageText,
-            timestamp: serverTimestamp(),
-            senderId: currentUser.uid
-          },
-          hasUnreadMessages: {
-            [currentUser.uid]: false,
-            [currentPartner.id]: true
+          if (!chatSnap.empty) {
+            return chatSnap.docs[0].id;
+          } else {
+            // If no direct chat exists, create one
+            const newRoomRef = doc(collection(firestore, 'chatRooms'));
+            const newRoomData: Omit<ChatRoom, 'id'> = {
+              participantIds: participants,
+              user1Id: participants[0],
+              user2Id: participants[1],
+              isProjectChat: false,
+              lastMessage: null,
+            };
+            transaction.set(newRoomRef, { ...newRoomData, id: newRoomRef.id });
+            return newRoomRef.id;
           }
         });
-  
-        await batch.commit();
+      }
 
-        setNewMessage('');
-        setSelectedFile(null);
-        setPreview(null);
-  
-    } catch(error) {
-        console.error("Error sending message:", error);
-        toast({
-            variant: "destructive",
-            title: "Error Sending Message",
-            description: "Could not send your message. Please try again."
-        });
+      if (!targetRoomId) {
+        throw new Error("Could not find or create a chat room for sending the message.");
+      }
+
+      const uploadedMedia = await uploadFiles(selectedFile ? [selectedFile] : [], targetRoomId);
+      const batch = writeBatch(firestore);
+
+      const messageRef = doc(collection(firestore, 'chatRooms', targetRoomId, 'chatMessages'));
+
+      const messageData: Partial<ChatMessage> = {
+        id: messageRef.id,
+        chatRoomId: targetRoomId,
+        senderId: currentUser.uid,
+        timestamp: serverTimestamp() as any,
+      };
+
+      if (text) messageData.message = text;
+      if (uploadedMedia.length > 0) {
+        const media = uploadedMedia[0];
+        messageData.mediaType = media.type;
+        messageData.mediaName = media.name;
+        if (media.type === 'image') {
+          messageData.imageUrl = media.url;
+        } else {
+          messageData.videoUrl = media.url;
+          messageData.thumbnailUrl = media.thumbnailUrl || undefined;
+        }
+      }
+
+      batch.set(messageRef, messageData);
+
+      const roomRef = doc(firestore, 'chatRooms', targetRoomId);
+      let lastMessageText = text;
+      if (uploadedMedia.length > 0) {
+        lastMessageText = uploadedMedia[0].type === 'image' ? 'Sent an image' : 'Sent a video';
+        if (text) lastMessageText = text;
+      }
+
+      batch.update(roomRef, {
+        lastMessage: {
+          text: lastMessageText,
+          timestamp: serverTimestamp() as any,
+          senderId: currentUser.uid
+        },
+        hasUnreadMessages: {
+          [currentUser.uid]: false,
+          [currentPartner.id]: true
+        }
+      });
+
+      await batch.commit();
+
+      if (chatRoom.isProjectChat) {
+        // For project chat, notify both parties or just the partner?
+        // Since this is a direct message, we notify the partner.
+        // But wait, chatRoom.isProjectChat might mean it's group?
+        // The implementation in page.tsx shows usage of 'currentPartner'.
+        // So we just notify the partner.
+      }
+
+      await sendNotification(currentPartner.id, {
+        title: 'New Message',
+        message: `You have a new message from ${currentUser.displayName || 'User'}`,
+        type: 'message_received',
+        link: chatRoom.isProjectChat ? `/requests/${chatRoom.requestId}` : `/messages/${targetRoomId}`,
+        relatedId: targetRoomId
+      });
+
+      setNewMessage('');
+      setSelectedFile(null);
+      setPreview(null);
+
+    } catch (error) {
+      console.error("Error sending message:", error);
+      toast({
+        variant: "destructive",
+        title: "Error Sending Message",
+        description: "Could not send your message. Please try again."
+      });
     } finally {
-        setIsSending(false);
+      setIsSending(false);
     }
   };
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.files && event.target.files[0]) {
-        const file = event.target.files[0];
-        setSelectedFile(file);
+      const file = event.target.files[0];
+      setSelectedFile(file);
 
-        const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
-        let previewUrl = URL.createObjectURL(file);
+      const mediaType = file.type.startsWith('image/') ? 'image' : 'video';
+      let previewUrl = URL.createObjectURL(file);
 
-        if (mediaType === 'video') {
-            try {
-                const thumbBlob = await captureVideoFrame(file, 'chat');
-                if (thumbBlob) {
-                   previewUrl = URL.createObjectURL(thumbBlob);
-                }
-            } catch (error) {
-                console.error("Could not generate video thumbnail for chat.", error);
-            }
+      if (mediaType === 'video') {
+        try {
+          const thumbBlob = await captureVideoFrame(file, 'chat');
+          if (thumbBlob) {
+            previewUrl = URL.createObjectURL(thumbBlob);
+          }
+        } catch (error) {
+          console.error("Could not generate video thumbnail for chat.", error);
         }
-        setPreview({ url: previewUrl, type: mediaType });
+      }
+      setPreview({ url: previewUrl, type: mediaType });
     }
   };
 
   const removeFile = () => {
     setSelectedFile(null);
     setPreview(null);
-    if(fileInputRef.current) {
-        fileInputRef.current.value = "";
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
@@ -293,7 +310,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
 
   return (
     <div className="flex h-full flex-col">
-       <div className="flex items-center gap-4 border-b p-4">
+      <div className="flex items-center gap-4 border-b p-4">
         {onBack && <Button variant="ghost" size="icon" onClick={onBack} className="md:hidden"><ArrowLeft /></Button>}
         <div className="flex -space-x-2 rtl:space-x-reverse">
           {finalPartners.map(p => (
@@ -311,20 +328,20 @@ export const ChatView: React.FC<ChatViewProps> = ({
         <ScrollArea className="h-full">
           <div className="p-4 space-y-4" ref={viewportRef}>
             {messages.length === 0 && chatRoom ? (
-                <div className="text-center text-muted-foreground pt-12">
-                    No messages yet. Say hello!
-                </div>
+              <div className="text-center text-muted-foreground pt-12">
+                No messages yet. Say hello!
+              </div>
             ) : messages.map((msg, index) => {
               const sender = allUsersMap?.get(msg.senderId);
 
               // In admin view (allUsersMap exists), align based on participant index. In user view, align based on current user.
               const isParticipant = chatRoom?.participantIds.includes(currentUser?.uid || '') ?? false;
               let alignRight;
-                if (!isParticipant) { // Admin view
-                    alignRight = msg.senderId === chatRoom?.participantIds[1];
-                } else { // Normal user view
-                    alignRight = msg.senderId === currentUser?.uid;
-                }
+              if (!isParticipant) { // Admin view
+                alignRight = msg.senderId === chatRoom?.participantIds[1];
+              } else { // Normal user view
+                alignRight = msg.senderId === currentUser?.uid;
+              }
 
               const showAvatar = (index === 0 || messages[index - 1].senderId !== msg.senderId);
               const mediaUrl = msg.imageUrl || msg.videoUrl;
@@ -337,7 +354,7 @@ export const ChatView: React.FC<ChatViewProps> = ({
                     alignRight ? 'justify-end' : 'justify-start'
                   )}
                 >
-                   {!alignRight && (
+                  {!alignRight && (
                     <div className="w-8 shrink-0">
                       {showAvatar && (
                         <Avatar className="h-8 w-8">
@@ -357,26 +374,26 @@ export const ChatView: React.FC<ChatViewProps> = ({
                         : 'bg-muted'
                     )}
                   >
-                     {mediaUrl && msg.mediaName && (
-                        <a 
-                            href={mediaUrl} 
-                            target="_blank" 
-                            rel="noopener noreferrer" 
-                            className={cn(
-                                "flex items-center gap-2 rounded-md p-2 transition-colors",
-                                alignRight ? "hover:bg-primary/80" : "hover:bg-muted-foreground/10"
-                            )}
-                        >
-                            {msg.mediaType === 'image' ? <FileImage className="h-5 w-5 shrink-0"/> : <FileVideo className="h-5 w-5 shrink-0"/>}
-                            <span className="truncate text-sm font-medium">{msg.mediaName}</span>
-                        </a>
-                     )}
+                    {mediaUrl && msg.mediaName && (
+                      <a
+                        href={mediaUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className={cn(
+                          "flex items-center gap-2 rounded-md p-2 transition-colors",
+                          alignRight ? "hover:bg-primary/80" : "hover:bg-muted-foreground/10"
+                        )}
+                      >
+                        {msg.mediaType === 'image' ? <FileImage className="h-5 w-5 shrink-0" /> : <FileVideo className="h-5 w-5 shrink-0" />}
+                        <span className="truncate text-sm font-medium">{msg.mediaName}</span>
+                      </a>
+                    )}
                     {msg.message && <p className="whitespace-pre-wrap break-words px-1">{msg.message}</p>}
-                     <p className={cn("text-xs mt-1 text-right px-1", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
-                        {msg.timestamp ? format(msg.timestamp.toDate(), 'p') : ''}
+                    <p className={cn("text-xs mt-1 text-right px-1", alignRight ? "text-primary-foreground/70" : "text-muted-foreground")}>
+                      {msg.timestamp ? format(msg.timestamp.toDate(), 'p') : ''}
                     </p>
                   </div>
-                   {alignRight && (
+                  {alignRight && (
                     <div className="w-8 shrink-0">
                       {showAvatar && (
                         <Avatar className="h-8 w-8">
@@ -394,28 +411,28 @@ export const ChatView: React.FC<ChatViewProps> = ({
           </div>
         </ScrollArea>
       </div>
-       <div className="border-t p-4">
+      <div className="border-t p-4">
         {preview && selectedFile && (
-            <div className="mb-2 relative w-fit rounded-md border p-2 flex items-center gap-2">
-                {preview.type === 'image' ? <FileImage className="h-5 w-5" /> : <Video className="h-5 w-5" />}
-                <span className="text-sm truncate">{selectedFile.name}</span>
-                <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={removeFile} >
-                    <X className="h-4 w-4" />
-                </Button>
-            </div>
+          <div className="mb-2 relative w-fit rounded-md border p-2 flex items-center gap-2">
+            {preview.type === 'image' ? <FileImage className="h-5 w-5" /> : <Video className="h-5 w-5" />}
+            <span className="text-sm truncate">{selectedFile.name}</span>
+            <Button variant="ghost" size="icon" className="h-6 w-6 rounded-full" onClick={removeFile} >
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
         )}
         <form onSubmit={handleSendMessage} className="flex items-center gap-2">
-           <Input 
-              type="file" 
-              className="hidden" 
-              ref={fileInputRef} 
-              onChange={handleFileChange} 
-              accept="image/*,video/*"
-              disabled={totalIsLoading}
-            />
-            <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={totalIsLoading || !!selectedFile}>
-                <Paperclip />
-            </Button>
+          <Input
+            type="file"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*,video/*"
+            disabled={totalIsLoading}
+          />
+          <Button type="button" variant="ghost" size="icon" onClick={() => fileInputRef.current?.click()} disabled={totalIsLoading || !!selectedFile}>
+            <Paperclip />
+          </Button>
           <Input
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}

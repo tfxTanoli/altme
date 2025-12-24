@@ -242,12 +242,13 @@ service cloud.firestore {
      * @principle   Enables transparency for project bidding while securing creation to photographers.
      */
     match /bids/{bidId} {
-      allow get: if isSignedIn() && (
-                    get(/databases/$(database)/documents/requests/$(resource.data.requestId)).data.userId == request.auth.uid ||
-                    resource.data.userId == request.auth.uid
-                  );
-      allow list: if isSignedIn(); // Queries will be filtered by rules on `requests` and `bids` get.
-      allow create: if isOwner(request.resource.data.userId); 
+      // Optimized rule using denormalized requestOwnerId to avoid expensive get() calls.
+      // Note: Clients must include 'requestOwnerId' when creating a bid.
+      allow read: if isSignedIn() && (
+        resource.data.requestOwnerId == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
+      allow create: if isOwner(request.resource.data.userId);
       allow update: if isOwner(resource.data.userId) && request.resource.data.status == 'cancelled';
       allow delete: if isExistingOwner(resource.data.userId);
     }

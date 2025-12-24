@@ -6,7 +6,7 @@ export const Logo = () => {
 
   return (
     <div className="flex items-center gap-2">
-      <img src={logoUrl} alt="AltMe Logo" width={24} height={24} className="h-6 w-6" />
+      <Image src={logoUrl} alt="AltMe Logo" width={24} height={24} className="h-6 w-6" />
       <span className="font-headline text-xl font-semibold">AltMe</span>
     </div>
   );

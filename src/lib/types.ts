@@ -10,7 +10,7 @@ export type User = {
     status: 'active' | 'deleted';
     photoURL?: string;
     bio?: string;
-    balance: number; 
+    balance: number;
     joinDate?: Timestamp;
     showActivityStatus?: boolean;
     unreadGigsCount?: number;
@@ -26,13 +26,13 @@ export type User = {
 }
 
 export type PhotographerProfile = {
-  id: string;
-  userId: string;
-  bio?: string;
-  serviceCountry?: string;
-  areas?: string[];
-  isAcceptingRequests?: boolean;
-  portfolioItemIds?: string[];
+    id: string;
+    userId: string;
+    bio?: string;
+    serviceCountry?: string;
+    areas?: string[];
+    isAcceptingRequests?: boolean;
+    portfolioItemIds?: string[];
 };
 
 export type PortfolioItem = {
@@ -47,40 +47,40 @@ export type PortfolioItem = {
 };
 
 export type ReferenceMedia = {
-  url: string;
-  thumbnailUrl?: string | null;
-  type: 'image' | 'video';
-  name: string;
+    url: string;
+    thumbnailUrl?: string | null;
+    type: 'image' | 'video';
+    name: string;
 };
 
 export type ProjectRequest = {
-  id: string;
-  title: string;
-  description: string;
-  mediaTypes?: ('image' | 'video')[];
-  videoDuration?: string;
-  location?: string;
-  country?: string;
-  datePreference?: 'flexible' | 'set-dates';
-  dateType?: 'specific-date' | 'delivery-deadline';
-  dates?: string[]; // Storing dates as an array of strings
-  budget: number;
-  acceptedBidAmount?: number;
-  userId: string; 
-  postedBy?: string; 
-  copyrightOption?: 'license' | 'transfer';
-  status: 'Open' | 'In Progress' | 'Delivered' | 'Completed' | 'Pending' | 'Disabled' | 'Disputed';
-  hiredPhotographerId?: string;
-  participantIds?: string[];
-  createdAt: Timestamp;
-  referenceMedia?: ReferenceMedia[];
-  unreadBidsCount?: number;
-  projectChatRoomId?: string;
-  clientHasReviewed?: boolean;
-  photographerHasReviewed?: boolean;
-  disputeResolution?: 'refunded' | 'paid';
-  disputeResolvedAt?: Timestamp;
-  photographerRespondedAt?: Timestamp;
+    id: string;
+    title: string;
+    description: string;
+    mediaTypes?: ('image' | 'video')[];
+    videoDuration?: string;
+    location?: string;
+    country?: string;
+    datePreference?: 'flexible' | 'set-dates';
+    dateType?: 'specific-date' | 'delivery-deadline';
+    dates?: string[]; // Storing dates as an array of strings
+    budget: number;
+    acceptedBidAmount?: number;
+    userId: string;
+    postedBy?: string;
+    copyrightOption?: 'license' | 'transfer';
+    status: 'Open' | 'In Progress' | 'Delivered' | 'Completed' | 'Pending' | 'Disabled' | 'Disputed';
+    hiredPhotographerId?: string;
+    participantIds?: string[];
+    createdAt: Timestamp;
+    referenceMedia?: ReferenceMedia[];
+    unreadBidsCount?: number;
+    projectChatRoomId?: string;
+    clientHasReviewed?: boolean;
+    photographerHasReviewed?: boolean;
+    disputeResolution?: 'refunded' | 'paid';
+    disputeResolvedAt?: Timestamp;
+    photographerRespondedAt?: Timestamp;
 };
 
 export type Bid = {
@@ -88,6 +88,7 @@ export type Bid = {
     photographerProfileId?: string;
     userId: string;
     requestId: string;
+    requestOwnerId: string; // Denormalized for security rules
     amount: number;
     notes?: string;
     createdAt: any;
@@ -127,13 +128,13 @@ export type PayoutRequest = {
     requestedAt: Timestamp;
     completedAt?: Timestamp;
 };
-    
+
 export type ContentDelivery = {
-  id: string;
-  requestId: string;
-  files: ReferenceMedia[];
-  deliveryDate: Timestamp;
-  isApproved: boolean;
+    id: string;
+    requestId: string;
+    files: ReferenceMedia[];
+    deliveryDate: Timestamp;
+    isApproved: boolean;
 };
 
 export type EscrowPayment = {
@@ -148,7 +149,7 @@ export type EscrowPayment = {
     paymentIntentId?: string;
     refundId?: string;
 };
-    
+
 export type ChatRoom = {
     id: string;
     participantIds: string[];
@@ -182,6 +183,6 @@ export type ChatMessage = {
     timestamp: Timestamp;
 };
 
-    
 
-    
+
+

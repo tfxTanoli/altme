@@ -1,8 +1,8 @@
 {
     "rules": {
         "users": {
+            ".read": "auth != null",
             "$uid": {
-                ".read": "$uid === auth.uid",
                 ".write": "$uid === auth.uid"
             }
         },
@@ -13,6 +13,15 @@
             "$profileId": {
                 ".read": true,
                 ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid) && newData.child('userId').val() === auth.uid"
+            }
+        },
+        "notifications": {
+            "$userId": {
+                ".read": "auth != null && auth.uid === $userId",
+                ".write": "auth != null",
+                ".indexOn": [
+                    "timestamp"
+                ]
             }
         }
     }
