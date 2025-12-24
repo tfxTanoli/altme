@@ -1,0 +1,112 @@
+{
+  "placeholderImages": [
+    {
+      "id": "avatar-1",
+      "description": "Avatar for Olivia Chen",
+      "imageUrl": "https://images.unsplash.com/photo-1531746020798-e6953c6e8e04?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2MzQ0NDY2Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "avatar-2",
+      "description": "Avatar for Benjamin Carter",
+      "imageUrl": "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtYW4lMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjM0OTU3MDZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man portrait"
+    },
+    {
+      "id": "avatar-3",
+      "description": "Avatar for Sophia Loren",
+      "imageUrl": "https://images.unsplash.com/photo-1502323777036-f29e3972d82f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHx3b21hbiUyMHByb2ZpbGV8ZW58MHx8fHwxNzYzNTM1MDg3fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman profile"
+    },
+    {
+      "id": "avatar-4",
+      "description": "Avatar for Marcus Reid",
+      "imageUrl": "https://images.unsplash.com/photo-1534308143481-c55f00be8bd7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw5fHxtYW4lMjBwcm9maWxlfGVufDB8fHx8MTc2MzQ3MzE0NHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "man profile"
+    },
+    {
+      "id": "portfolio-1",
+      "description": "A stunning mountain landscape at sunrise.",
+      "imageUrl": "https://images.unsplash.com/photo-1604223190546-a43e4c7f29d7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtb3VudGFpbiUyMGxhbmRzY2FwZXxlbnwwfHx8fDE3NjM1MTgzMDR8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "mountain landscape"
+    },
+    {
+      "id": "portfolio-2",
+      "description": "A close-up portrait of a smiling woman.",
+      "imageUrl": "https://images.unsplash.com/photo-1557053908-4793c484d06f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHx3b21hbiUyMHBvcnRyYWl0fGVufDB8fHx8MTc2MzQ0NDY2Mnww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "woman portrait"
+    },
+    {
+      "id": "portfolio-3",
+      "description": "Abstract cityscape with long exposure.",
+      "imageUrl": "https://images.unsplash.com/photo-1762948050129-976466bf5170?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxhYnN0cmFjdCUyMGNpdHlzY2FwZXxlbnwwfHx8fDE3NjM1MzUwODZ8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "abstract cityscape"
+    },
+    {
+      "id": "portfolio-4",
+      "description": "A candid shot of a couple laughing at their wedding.",
+      "imageUrl": "https://images.unsplash.com/photo-1591604466107-ec97de577aff?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwzfHx3ZWRkaW5nJTIwY291cGxlfGVufDB8fHx8MTc2MzQ4Nzg3OHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "wedding couple"
+    },
+    {
+      "id": "portfolio-5",
+      "description": "Delicious-looking plate of gourmet food.",
+      "imageUrl": "https://images.unsplash.com/photo-1623428454550-59def1b068a7?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxMHx8Z291cm1ldCUyMGZvb2R8ZW58MHx8fHwxNzYzNTAxOTk2fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "gourmet food"
+    },
+    {
+      "id": "portfolio-6",
+      "description": "Drone shot of a tropical beach.",
+      "imageUrl": "https://images.unsplash.com/photo-1672841828271-54340a6fbcd3?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHx0cm9waWNhbCUyMGJlYWNofGVufDB8fHx8MTc2MzQ4NDAyNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "tropical beach"
+    },
+    {
+      "id": "portfolio-7",
+      "description": "A fashion model posing in urban environment.",
+      "imageUrl": "https://images.unsplash.com/photo-1627577279497-4b24bf1021b6?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxmYXNoaW9uJTIwbW9kZWx8ZW58MHx8fHwxNzYzNDU4MzU4fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "fashion model"
+    },
+    {
+      "id": "portfolio-8",
+      "description": "A musician playing guitar on stage.",
+      "imageUrl": "https://images.unsplash.com/photo-1706990492420-f76fb1dabe9e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxtdXNpY2lhbiUyMHN0YWdlfGVufDB8fHx8MTc2MzUxODYwNHww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "musician stage"
+    },
+    {
+      "id": "portfolio-9",
+      "description": "A family portrait in a park.",
+      "imageUrl": "https://images.unsplash.com/photo-1596510914965-9ae08acae566?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxmYW1pbHklMjBwb3J0cmFpdHxlbnwwfHx8fDE3NjM0NzkyNTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "family portrait"
+    },
+    {
+      "id": "portfolio-10",
+      "description": "A minimalist architectural detail.",
+      "imageUrl": "https://images.unsplash.com/photo-1483366774565-c783b9f70e2c?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtaW5pbWFsaXN0JTIwYXJjaGl0ZWN0dXJlfGVufDB8fHx8MTc2MzUyODIxOXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "minimalist architecture"
+    },
+    {
+      "id": "portfolio-11",
+      "description": "Athlete in action during a sports event.",
+      "imageUrl": "https://images.unsplash.com/photo-1650805174015-53ceeec12c40?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxzcG9ydHMlMjBhY3Rpb258ZW58MHx8fHwxNzYzNTIzNzQ1fDA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "sports action"
+    },
+    {
+      "id": "portfolio-12",
+      "description": "A newborn baby sleeping peacefully.",
+      "imageUrl": "https://images.unsplash.com/photo-1552819289-824d37ca69d2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHwxfHxuZXdib3JuJTIwYmFieXxlbnwwfHx8fDE3NjM1MDUwNjh8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "newborn baby"
+    },
+    {
+      "id": "portfolio-13",
+      "description": "Watermarked image of a city skyline",
+      "imageUrl": "https://images.unsplash.com/photo-1502228362178-086346ac6862?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw4fHxjaXR5JTIwc2t5bGluZXxlbnwwfHx8fDE3NjM0OTUxMDd8MA&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "city skyline"
+    },
+    {
+      "id": "portfolio-14",
+      "description": "Watermarked image of a forest path",
+      "imageUrl": "https://images.unsplash.com/photo-1441974231531-c6227db76b6e?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw0fHxmb3Jlc3QlMjBwYXRofGVufDB8fHx8MTc2MzQ2NTc0NXww&ixlib=rb-4.1.0&q=80&w=1080",
+      "imageHint": "forest path"
+    }
+  ]
+}

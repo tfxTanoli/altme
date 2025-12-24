@@ -1,0 +1,19 @@
+{
+    "rules": {
+        "users": {
+            "$uid": {
+                ".read": "$uid === auth.uid",
+                ".write": "$uid === auth.uid"
+            }
+        },
+        "photographerProfiles": {
+            ".indexOn": [
+                "userId"
+            ],
+            "$profileId": {
+                ".read": true,
+                ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid) && newData.child('userId').val() === auth.uid"
+            }
+        }
+    }
+}

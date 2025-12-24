@@ -1,0 +1,873 @@
+
+
+{
+  "entities": {
+    "PhotographerProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PhotographerProfile",
+      "type": "object",
+      "description": "Represents a photographer's profile with their portfolio, bio, genres, and areas.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PhotographerProfile entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:1 PhotographerProfile)"
+        },
+        "bio": {
+          "type": "string",
+          "description": "A short biography of the photographer."
+        },
+        "serviceCountry": {
+            "type": "string",
+            "description": "The country code where the photographer primarily offers services."
+        },
+        "areas": {
+          "type": "array",
+          "description": "List of cities or regions the photographer services within their country.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "isAcceptingRequests": {
+            "type": "boolean",
+            "description": "Indicates if the photographer is currently accepting new project requests.",
+            "default": true
+        },
+        "portfolioItemIds": {
+          "type": "array",
+          "description": "References to PortfolioItems. (Relationship: PhotographerProfile 1:N PortfolioItem)",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "id",
+        "userId"
+      ]
+    },
+    "PortfolioItem": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "PortfolioItem",
+      "type": "object",
+      "description": "Represents an image or video in a photographer's portfolio.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the PortfolioItem entity."
+        },
+        "photographerProfileId": {
+          "type": "string",
+          "description": "Reference to PhotographerProfile. (Relationship: PhotographerProfile 1:N PortfolioItem)"
+        },
+        "userId": {
+          "type": "string",
+          "description": "Denormalized ID of the owning user for security rules."
+        },
+        "mediaUrl": {
+          "type": "string",
+          "description": "URL of the portfolio image or video."
+        },
+         "thumbnailUrl": {
+            "type": "string",
+            "description": "URL of the video thumbnail, if applicable."
+        },
+        "mediaType": {
+          "type": "string",
+          "description": "The type of media.",
+          "enum": ["image", "video"]
+        },
+        "description": {
+          "type": "string",
+          "description": "Short description of the portfolio item."
+        },
+        "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The timestamp when the portfolio item was created."
+        }
+      },
+      "required": [
+        "id",
+        "photographerProfileId",
+        "userId",
+        "mediaUrl",
+        "mediaType",
+        "createdAt"
+      ]
+    },
+    "Request": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Request",
+      "type": "object",
+      "description": "Represents a user's request for a photo or video shoot.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Request entity."
+        },
+        "title": {
+            "type": "string",
+            "description": "The title of the request."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to User. (Relationship: User 1:N Request)"
+        },
+        "participantIds": {
+            "type": "array",
+            "description": "An array containing the client's UID and the hired photographer's UID for querying.",
+            "items": { "type": "string" },
+            "minItems": 2,
+            "maxItems": 2
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the request."
+        },
+        "mediaTypes": {
+            "type": "array",
+            "description": "The types of media requested (e.g., image, video).",
+            "items": { "type": "string", "enum": ["image", "video"] }
+        },
+        "videoDuration": {
+            "type": "string",
+            "description": "The approximate desired length of the video."
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of the requested photo/video shoot.",
+          "format": "date-time"
+        },
+        "country": {
+            "type": "string",
+            "description": "The country code for the request location."
+        },
+        "location": {
+          "type": "string",
+          "description": "Location of the requested photo/video shoot."
+        },
+        "budget": {
+          "type": "number",
+          "description": "The user's budget for the request."
+        },
+        "acceptedBidAmount": {
+          "type": "number",
+          "description": "The final amount agreed upon when a photographer was hired."
+        },
+        "copyrightOption": {
+            "type": "string",
+            "description": "The copyright option selected by the client.",
+            "enum": ["license", "transfer"]
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the request (e.g., Open, In Progress, Delivered, Completed, Pending, Disabled, Disputed).",
+          "enum": ["Open", "In Progress", "Delivered", "Completed", "Pending", "Disabled", "Disputed"]
+        },
+        "hiredPhotographerId": {
+          "type": "string",
+          "description": "Reference to the User (photographer) hired for the request."
+        },
+        "unreadBidsCount": {
+          "type": "number",
+          "description": "The number of unread bids on this request."
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "userId",
+        "description",
+        "budget",
+        "status"
+      ]
+    },
+    "Bid": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Bid",
+      "type": "object",
+      "description": "Represents a photographer's bid on a user's request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Bid entity."
+        },
+        "userId": {
+          "type": "string",
+          "description": "ID of the user (photographer) placing the bid."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Reference to Request. (Relationship: Request 1:N Bid)"
+        },
+        "amount": {
+          "type": "number",
+          "description": "The amount the photographer is bidding."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes from the photographer."
+        },
+        "status": {
+          "type": "string",
+          "enum": ["active", "cancelled"],
+          "description": "The status of the bid."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "requestId",
+        "amount",
+        "status"
+      ]
+    },
+    "ChatMessage": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatMessage",
+      "type": "object",
+      "description": "Represents a message in a chat room.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatMessage entity."
+        },
+        "chatRoomId": {
+          "type": "string",
+          "description": "Reference to ChatRoom. (Relationship: ChatRoom 1:N ChatMessage)"
+        },
+        "senderId": {
+          "type": "string",
+          "description": "Reference to User who sent the message. (Relationship: User 1:N ChatMessage (as sender))"
+        },
+        "message": {
+          "type": "string",
+          "description": "The content of the message. Optional if media is present."
+        },
+        "imageUrl": {
+          "type": "string",
+          "description": "URL of an image sent in the message, if any."
+        },
+        "videoUrl": {
+          "type": "string",
+          "description": "URL of a video sent in the message, if any."
+        },
+        "thumbnailUrl": {
+            "type": "string",
+            "description": "URL of the video thumbnail, if applicable."
+        },
+        "mediaType": {
+          "type": "string",
+          "enum": ["image", "video"]
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The time the message was sent.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "chatRoomId",
+        "senderId",
+        "timestamp"
+      ]
+    },
+    "ChatRoom": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ChatRoom",
+      "type": "object",
+      "description": "Represents a chat room between a user and a photographer.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ChatRoom entity."
+        },
+        "participantIds": {
+            "type": "array",
+            "description": "A sorted array containing the UIDs of the two participants. Used for querying.",
+            "items": { "type": "string" },
+            "minItems": 2,
+            "maxItems": 2
+        },
+        "user1Id": {
+          "type": "string",
+          "description": "Reference to the first user in the chat (likely the request poster). (Relationship: User 1:N ChatRoom (as user1))"
+        },
+        "user2Id": {
+          "type": "string",
+          "description": "Reference to the second user in the chat (likely the photographer). (Relationship: User 1:N ChatRoom (as user2))"
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Reference to the Request this chat is for, if applicable."
+        },
+        "isProjectChat": {
+          "type": "boolean",
+          "description": "Indicates if the chat is tied to a specific project."
+        },
+         "lastMessage": {
+          "type": "object",
+          "description": "The last message sent in the chat room for quick display.",
+          "properties": {
+            "text": { "type": "string" },
+            "timestamp": { "type": "string", "format": "date-time" },
+            "senderId": { "type": "string" }
+          }
+        },
+        "hasUnreadMessages": {
+            "type": "object",
+            "description": "Map of userId to boolean indicating unread messages.",
+            "additionalProperties": { "type": "boolean" }
+        },
+        "lastReadTimestamps": {
+            "type": "object",
+            "description": "Map of userId to the timestamp of their last read.",
+            "additionalProperties": { "type": "string", "format": "date-time" }
+        },
+        "isArchived": {
+          "type": "boolean",
+          "description": "Indicates if the chat has been archived and should be hidden from the main list."
+        }
+      },
+      "required": [
+        "id",
+        "participantIds",
+        "user1Id",
+        "user2Id"
+      ]
+    },
+    "ContentDelivery": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ContentDelivery",
+      "type": "object",
+      "description": "Represents the delivery of photo/video content from the photographer to the user for a specific request.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ContentDelivery entity."
+        },
+        "requestId": {
+          "type": "string",
+          "description": "Reference to Request. (Relationship: Request 1:N ContentDelivery)"
+        },
+        "files": {
+          "type": "array",
+          "description": "Array of delivered files.",
+          "items": {
+            "type": "object",
+            "properties": {
+              "url": { "type": "string", "description": "URL of the file." },
+              "thumbnailUrl": { "type": "string", "description": "URL of the video thumbnail." },
+              "type": { "type": "string", "enum": ["image", "video"], "description": "Type of the media." },
+              "name": { "type": "string", "description": "Name of the file." }
+            },
+            "required": ["url", "type", "name"]
+          }
+        },
+        "deliveryDate": {
+          "type": "string",
+          "description": "Date and time of content delivery.",
+          "format": "date-time"
+        },
+        "isApproved": {
+          "type": "boolean",
+          "description": "Indicates whether the user has approved the delivered content."
+        }
+      },
+      "required": [
+        "id",
+        "requestId",
+        "files",
+        "deliveryDate"
+      ]
+    },
+    "EscrowPayment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "EscrowPayment",
+      "type": "object",
+      "description": "Represents an escrow payment for a photo/video shoot.",
+      "properties": {
+        "id": { "type": "string" },
+        "requestId": { "type": "string", "description": "Reference to the Request this payment is for." },
+        "payerId": { "type": "string", "description": "The ID of the user (client) making the payment." },
+        "payeeId": { "type": "string", "description": "The ID of the user (photographer) receiving the payment." },
+        "amount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "released", "refunded"] },
+        "paymentDate": { "type": "string", "format": "date-time" },
+        "releaseDate": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "id",
+        "requestId",
+        "payerId",
+        "payeeId",
+        "amount",
+        "status",
+        "paymentDate"
+      ]
+    },
+    "Review": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Review",
+        "type": "object",
+        "description": "Represents a review left by a user for another user on a specific request.",
+        "properties": {
+            "id": { "type": "string", "description": "Unique identifier for the Review entity." },
+            "requestId": { "type": "string", "description": "Reference to the Request this review is for." },
+            "reviewerId": { "type": "string", "description": "The ID of the user who wrote the review." },
+            "revieweeId": { "type": "string", "description": "The ID of the user being reviewed." },
+            "rating": { "type": "number", "description": "A star rating from 1 to 5." },
+            "comment": { "type": "string", "description": "The text content of the review." },
+            "createdAt": { "type": "string", "format": "date-time", "description": "The timestamp when the review was submitted." }
+        },
+        "required": ["id", "requestId", "reviewerId", "revieweeId", "rating", "comment", "createdAt"]
+    },
+    "User": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "User",
+      "type": "object",
+      "description": "Represents a user of the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the User entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "name": {
+          "type": "string",
+          "description": "The user's name."
+        },
+        "role": {
+          "type": "string",
+          "description": "The user's role in the application.",
+          "enum": [
+            "admin",
+            "user"
+          ]
+        },
+        "photoURL": {
+          "type": "string",
+          "description": "URL of the user's profile picture."
+        },
+        "bio": {
+            "type": "string",
+            "description": "A short biography of the user."
+        },
+        "balance": {
+            "type": "number",
+            "description": "The user's unified balance, combining earnings and credits. Can be used for payouts or future payments."
+        },
+        "joinDate": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date the user joined."
+        },
+        "showActivityStatus": {
+            "type": "boolean",
+            "description": "Indicates if the user's online activity status should be visible to others.",
+            "default": true
+        },
+        "unreadGigsCount": {
+          "type": "number",
+          "description": "The number of unread notifications about new gigs."
+        },
+        "pendingReviewCount": {
+            "type": "number",
+            "description": "The number of completed gigs pending review from this user."
+        },
+        "stripeAccountId": {
+            "type": "string",
+            "description": "The Stripe Connect account ID for the user, used for payouts."
+        },
+        "activeDisputesCount": {
+            "type": "number",
+            "description": "The number of active disputes this user is involved in."
+        },
+        "openReportsCount": {
+            "type": "number",
+            "description": "The number of open reports requiring admin review."
+        },
+        "disputedProjectsCount": {
+            "type": "number",
+            "description": "The number of disputed projects requiring admin review."
+        },
+        "readNotificationIds": {
+            "type": "array",
+            "description": "An array of notification IDs that the user has marked as read.",
+            "items": { "type": "string" }
+        },
+        "unreadContactSubmissionsCount": {
+            "type": "number",
+            "description": "The number of unread contact submissions for admins."
+        }
+      },
+      "required": [
+        "id",
+        "email",
+        "name",
+        "role"
+      ]
+    },
+     "ContactSubmission": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ContactSubmission",
+      "type": "object",
+      "description": "Represents a submission from the contact form.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ContactSubmission entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The name of the person submitting the form."
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The email address of the person submitting the form."
+        },
+        "message": {
+          "type": "string",
+          "description": "The content of the message."
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the form was submitted."
+        }
+      },
+      "required": ["id", "name", "email", "message", "submittedAt"]
+    },
+    "PayoutRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "PayoutRequest",
+        "type": "object",
+        "description": "Represents a photographer's request to withdraw their earnings.",
+        "properties": {
+            "id": { "type": "string", "description": "Unique identifier for the PayoutRequest." },
+            "userId": { "type": "string", "description": "The ID of the user (photographer) requesting the payout." },
+            "amount": { "type": "number", "description": "The amount requested for payout." },
+            "status": { "type": "string", "enum": ["pending", "completed"], "description": "The status of the payout request." },
+            "requestedAt": { "type": "string", "format": "date-time", "description": "Timestamp of when the request was made." },
+            "completedAt": { "type": "string", "format": "date-time", "description": "Timestamp of when the payout was completed." }
+        },
+        "required": ["id", "userId", "amount", "status", "requestedAt"]
+    },
+    "Report": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Report",
+        "type": "object",
+        "description": "Represents a user-submitted report for moderation.",
+        "properties": {
+            "id": { "type": "string", "description": "Unique identifier for the Report." },
+            "reporterId": { "type": "string", "description": "The ID of the user who submitted the report." },
+            "reportedUserId": { "type": "string", "description": "The ID of the user being reported." },
+            "reason": { "type": "string", "description": "The general reason for the report." },
+            "details": { "type": "string", "description": "Detailed explanation of the issue." },
+            "context": { 
+                "type": "object",
+                "description": "Context about what is being reported.",
+                "properties": {
+                    "type": { "type": "string", "enum": ["user", "request"] },
+                    "id": { "type": "string" }
+                }
+             },
+             "mediaAttachments": {
+                "type": "array",
+                "description": "URLs of images or videos attached as evidence.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "url": { "type": "string" },
+                        "type": { "type": "string", "enum": ["image", "video"] },
+                        "name": { "type": "string" }
+                    },
+                    "required": ["url", "type", "name"]
+                }
+            },
+            "status": { "type": "string", "enum": ["open", "resolved"], "default": "open" },
+            "createdAt": { "type": "string", "format": "date-time", "description": "Timestamp of when the report was submitted." }
+        },
+        "required": ["id", "reporterId", "reportedUserId", "reason", "context", "createdAt"]
+    },
+    "Mail": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Mail",
+      "type": "object",
+      "description": "Represents an email to be sent by the 'Trigger Email from Firestore' extension.",
+      "properties": {
+        "to": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "email"
+          },
+          "description": "An array of recipient email addresses."
+        },
+        "message": {
+          "type": "object",
+          "properties": {
+            "subject": {
+              "type": "string",
+              "description": "The subject of the email."
+            },
+            "html": {
+              "type": "string",
+              "description": "The HTML content of the email."
+            }
+          },
+          "required": ["subject", "html"]
+        }
+      },
+      "required": ["to", "message"]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "User",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Collection of user documents.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/contactSubmissions/{submissionId}",
+        "definition": {
+          "entityName": "ContactSubmission",
+          "schema": { "$ref": "#/backend/entities/ContactSubmission" },
+          "description": "Collection of contact form submissions.",
+          "params": [
+            {
+              "name": "submissionId",
+              "description": "The unique identifier for the contact submission."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/photographerProfiles/{photographerProfileId}",
+        "definition": {
+          "entityName": "PhotographerProfile",
+          "schema": {
+            "$ref": "#/backend/entities/PhotographerProfile"
+          },
+          "description": "Top-level collection of all photographer profiles. This allows for public browsing.",
+          "params": [
+            {
+              "name": "photographerProfileId",
+              "description": "The unique identifier for the photographer profile."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/photographerProfiles/{photographerProfileId}/portfolioItems/{portfolioItemId}",
+        "definition": {
+          "entityName": "PortfolioItem",
+          "schema": {
+            "$ref": "#/backend/entities/PortfolioItem"
+          },
+          "description": "Portfolio items related to a photographer profile.",
+          "params": [
+            {
+              "name": "photographerProfileId",
+              "description": "The unique identifier for the photographer profile."
+            },
+            {
+              "name": "portfolioItemId",
+              "description": "The unique identifier for the portfolio item."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/requests/{requestId}",
+        "definition": {
+          "entityName": "Request",
+          "schema": {
+            "$ref": "#/backend/entities/Request"
+          },
+          "description": "Top-level collection of all user requests. This allows for public browsing and bidding by photographers.",
+          "params": [
+            {
+              "name": "requestId",
+              "description": "The unique identifier for the request."
+            }
+          ],
+          "indexes": [
+            {
+              "fields": [
+                { "fieldPath": "clientHasReviewed", "order": "ASCENDING" },
+                { "fieldPath": "hiredPhotographerId", "order": "ASCENDING" },
+                { "fieldPath": "photographerHasReviewed", "order": "ASCENDING" }
+              ]
+            }
+          ]
+        }
+      },
+      {
+        "path": "/requests/{requestId}/contentDeliveries/{contentDeliveryId}",
+        "definition": {
+            "entityName": "ContentDelivery",
+            "schema": { "$ref": "#/backend/entities/ContentDelivery" },
+            "description": "Content delivered for a specific request.",
+            "params": [
+                { "name": "requestId", "description": "The unique identifier for the request." },
+                { "name": "contentDeliveryId", "description": "The unique identifier for the content delivery." }
+            ]
+        }
+      },
+      {
+        "path": "/reviews/{reviewId}",
+        "definition": {
+          "entityName": "Review",
+          "schema": { "$ref": "#/backend/entities/Review" },
+          "description": "Top-level collection of all reviews. This structure simplifies querying for all reviews received by a specific user.",
+          "params": [
+            {
+              "name": "reviewId",
+              "description": "The unique identifier for the review."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/bids/{bidId}",
+        "definition": {
+          "entityName": "Bid",
+          "schema": {
+            "$ref": "#/backend/entities/Bid"
+          },
+          "description": "Bids placed on user requests.  Security rules should ensure the 'photographerProfileId' matches the authenticated photographer.",
+          "params": [
+            {
+              "name": "bidId",
+              "description": "The unique identifier for the bid."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/chatRooms/{chatRoomId}",
+        "definition": {
+          "entityName": "ChatRoom",
+          "schema": {
+            "$ref": "#/backend/entities/ChatRoom"
+          },
+          "description": "Chat rooms between users and photographers.  Security rules should ensure that the requesting user's ID is in the `participantIds` array.",
+          "params": [
+            {
+              "name": "chatRoomId",
+              "description": "The unique identifier for the chat room."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/chatRooms/{chatRoomId}/chatMessages/{chatMessageId}",
+        "definition": {
+          "entityName": "ChatMessage",
+          "schema": {
+            "$ref": "#/backend/entities/ChatMessage"
+          },
+          "description": "Chat messages within a chat room. Security rules should ensure that the 'chatRoomId' matches the parent chat room and the senderId matches the authenticated user.",
+          "params": [
+            {
+              "name": "chatRoomId",
+              "description": "The unique identifier for the chat room."
+            },
+            {
+              "name": "chatMessageId",
+              "description": "The unique identifier for the chat message."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/escrowPayments/{escrowPaymentId}",
+        "definition": {
+          "entityName": "EscrowPayment",
+          "schema": {
+            "$ref": "#/backend/entities/EscrowPayment"
+          },
+          "description": "Escrow payments related to a specific request. Security rules should ensure that the user is a participant in the request.",
+          "params": [
+            {
+              "name": "escrowPaymentId",
+              "description": "The unique identifier for the escrow payment."
+            }
+          ]
+        }
+      },
+       {
+        "path": "/payoutRequests/{payoutRequestId}",
+        "definition": {
+          "entityName": "PayoutRequest",
+          "schema": { "$ref": "#/backend/entities/PayoutRequest" },
+          "description": "Collection of payout requests from photographers.",
+          "params": [
+            {
+              "name": "payoutRequestId",
+              "description": "The unique identifier for the payout request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/reports/{reportId}",
+        "definition": {
+          "entityName": "Report",
+          "schema": { "$ref": "#/backend/entities/Report" },
+          "description": "Collection of user-submitted reports for moderation.",
+          "params": [
+            {
+              "name": "reportId",
+              "description": "The unique identifier for the report."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/mail/{mailId}",
+        "definition": {
+          "entityName": "Mail",
+          "schema": { "$ref": "#/backend/entities/Mail" },
+          "description": "Collection for triggering emails with the 'Trigger Email from Firestore' extension.",
+          "params": [
+            {
+              "name": "mailId",
+              "description": "The unique identifier for the email document."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "This Firestore structure is designed to support the AltMe application, focusing on secure and scalable data management for photographer profiles, user requests, bidding, chat, content delivery, and escrow payments. The design prioritizes Authorization Independence, Clarity of Intent, and follows the DBAC (Database-Based Access Control) approach, avoiding custom claims. It also adheres to the principle that Rules are not Filters (QAPs). Authorization independence is achieved primarily through denormalization.\\n\\n**Authorization Independence (Denormalization):**\\n*   The structure avoids hierarchical authorization dependencies by denormalizing relevant authorization data. For example, access to PortfolioItems is controlled via the PhotographerProfile, and the `photographerProfileId` field on `PortfolioItem` allows direct rule evaluation without needing to `get()` the parent profile document.\\n*   ChatRooms store both `user1Id` and `user2Id`, which allows security rules to validate that the requesting user is one of the participants without needing to fetch user data or related request data.\\n\\n**Structural Segregation (Homogeneous Security Posture):**\\n*   User-specific data, such as PhotographerProfile and Requests, are now stored in top-level collections for easier querying by all users (e.g., browsing photographers or open projects).\\n*   All documents within a collection share the same security requirements, simplifying rules and improving maintainability.\\n\\n**Access Modeling:**\\n*   **Private Data:** User documents remain private.\\n*   **Public/Collaborative Data:** PhotographerProfiles and Requests are now in top-level collections to allow public browsing. Security rules on these collections differentiate between public read access and owner-only write access.\\n\\n**QAPs (Rules are not Filters):**\\n*   By moving collections like `requests` and `photographerProfiles` to the top level, we can apply broad `list` rules for all authenticated users, while still securing write operations to document owners.\\n\\n**Invariants:**\\n*   Ownership is enforced using path-based rules (e.g., only the user with `userId` can create/modify data under `/users/{userId}`).\\n\\n**Overall:**\\nThis design results in more robust, easily debuggable security rules. By eliminating `get()` calls, we ensure that atomic operations work correctly and avoid cascading security failures. The explicit structure enhances debuggability, making the authorization intent clear."
+  }
+}

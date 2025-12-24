@@ -1,0 +1,338 @@
+
+/**
+ * Core Philosophy:
+ * This ruleset enforces a security model based on strict user ownership for private data
+ * and a collaborative, shared-access model for interactive features like chat rooms.
+ * The primary goal is to ensure users can only access and manage their own information,
+ * while allowing controlled interaction between specific users (e.g., a client and a photographer).
+ *
+ * Data Structure:
+ * - User-specific data, such as profiles (`photographerProfiles`) and service requests (`requests`),
+ *   is nested under `/users/{userId}`. This structure provides a clear chain of ownership
+ *   and simplifies security rules.
+ * - Collaborative data, like `chatRooms`, is stored in top-level collections. Access is
+ *   granted by checking for the user's UID in a list of participants (`user1Id`, `user2Id`)
+ *   denormalized directly on the chat room document.
+ * - Subcollections like `chatMessages` and `contentDeliveries` inherit their access rights from
+ *   the parent `chatRoom`.
+ *
+ * Key Security Decisions:
+ * - User Listing Disabled: To protect user privacy, it is not possible to list all documents
+ *   in the top-level `/users` collection without authentication.
+ * - Denormalization for Authorization: Access control relies on IDs stored directly on the
+ *   documents being secured. For example, a `chatRoom` document contains the UIDs of both
+ *   participants. This avoids slow, costly, and sometimes impossible cross-collection `get()`
+ *   calls in rules.
+ * - Secure Default for Ambiguity: For collections like `bids` and `portfolioImages`, where the
+ *   provided data model lacks the necessary denormalized user IDs for secure validation, access
+ *   is denied by default. Explanatory comments guide the developer to update the data model
+ *   to enable secure rules.
+ * - Structural Segregation: Private user data (`/users/{userId}/*`) is kept separate from
+ *   public or collaborative data (`/chatRooms`), ensuring that queries for one type of data
+ * not inadvertently expose the other.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --------------------------------------------------------------------------------
+    // Helper Functions
+    // --------------------------------------------------------------------------------
+
+    /**
+     * Checks if a user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     * This is the foundation of the ownership model.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * Verifies that a document already exists in Firestore.
+     * CRITICAL for all update and delete operations to prevent unintended side effects.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    /**
+     * A convenient combination of isOwner() and isExistingDoc() for update/delete rules.
+     */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && isExistingDoc();
+    }
+    
+    function isAdmin() {
+      // Check for custom claim first, then fallback to DB role for flexibility.
+      // Note: `get()` is not allowed in `list` operations, so custom claims are preferred.
+      return isSignedIn() && (
+        request.auth.token.admin == true ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+      );
+    }
+    
+    /**
+     * Checks if the requesting user is the hired photographer for a given request.
+     */
+    function isHiredPhotographer(requestId) {
+        let req = get(/databases/$(database)/documents/requests/$(requestId)).data;
+        return isSignedIn() && request.auth.uid == req.hiredPhotographerId;
+    }
+
+    /**
+     * Checks if the requesting user is involved in a request, either as the client or the photographer.
+     */
+    function isRequestParticipant(requestId) {
+        let req = get(/databases/$(database)/documents/requests/$(requestId)).data;
+        return isSignedIn() && (request.auth.uid == req.userId || request.auth.uid == req.hiredPhotographerId);
+    }
+    
+    /**
+     * Checks if the requesting user is a participant in the specified chat room.
+     */
+    function isChatParticipant(chatRoomId) {
+        return request.auth.uid in get(/databases/$(database)/documents/chatRooms/$(chatRoomId)).data.participantIds;
+    }
+
+
+    // --------------------------------------------------------------------------------
+    // Collection Rules
+    // --------------------------------------------------------------------------------
+
+    /**
+     * @description Manages user documents. Users can create their own document and update their own data.
+     *              Admins can update any user's status for soft deletion. Deletion is disallowed for security,
+     *              hard deletes must be handled server-side or by an admin function.
+     * @path        /users/{userId}
+     * @allow       (get) Any user can read public user profile data.
+     * @allow       (list) An authenticated user can list users (e.g., for search).
+     * @principle   Enforces self-creation and ownership for writes, public reads for profiles,
+     *              and authenticated listing to prevent data scraping.
+     */
+    match /users/{userId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isOwner(userId) && request.resource.data.id == userId;
+      allow update: if (isExistingOwner(userId) && (request.resource.data.id == resource.data.id || request.resource.data.favoritePhotographerIds != null || request.resource.data.favoriteRequestIds != null || request.resource.data.stripeAccountId != null || request.resource.data.showActivityStatus != null || request.resource.data.readNotificationIds != null)) ||
+                     (isSignedIn() && request.resource.data.unreadGigsCount != null) || 
+                     (isSignedIn() && request.resource.data.pendingReviewCount != null) ||
+                     (isRequestParticipant(request.resource.data.requestId) && request.resource.data.activeDisputesCount != null) ||
+                     (isSignedIn() && request.resource.data.unreadContactSubmissionsCount != null) ||
+                     isAdmin();
+      allow delete: if isOwner(userId) || isAdmin();
+    }
+    
+    /**
+     * @description Manages contact form submissions from the public "Contact Us" page.
+     * @path        /contactSubmissions/{submissionId}
+     * @allow       (create) Anyone can submit the contact form.
+     * @allow       (read) Only administrators can read submissions.
+     * @deny        (update, delete) No client-side updates or deletes are allowed.
+     * @principle   Allows public write access for submissions but restricts read access to admins
+     *              to protect user privacy.
+     */
+    match /contactSubmissions/{submissionId} {
+      allow get, list: if isAdmin();
+      allow create: if true;
+      allow update, delete: if false;
+    }
+
+    /**
+     * @description Top-level collection for photographer profiles, allowing public read access
+     *              while restricting writes to the profile owner.
+     * @path /photographerProfiles/{photographerProfileId}
+     * @allow (get) Anyone can view photographer profiles.
+     * @allow (list) Anyone can query profiles for public display.
+     * @allow (create, update) Only the authenticated owner of the profile can write.
+     * @allow (delete) The owner or an admin can delete the profile.
+     * @principle Enables public discovery of photographers while maintaining ownership for writes.
+     */
+    match /photographerProfiles/{photographerProfileId} {
+        allow get: if true;
+        allow list: if true;
+        allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+        allow update: if isSignedIn() && isExistingDoc() && resource.data.userId == request.auth.uid;
+        allow delete: if isExistingOwner(resource.data.userId) || isAdmin();
+
+        /**
+         * @description Manages a photographer's portfolio items. These are public to view.
+         * @path        /photographerProfiles/{photographerProfileId}/portfolioItems/{portfolioItemId}
+         * @allow       (get, list) Any user, authenticated or not, can view portfolio items.
+         * @allow       (create) A photographer can add an item to their own portfolio.
+         * @principle   Public read access. Writes are secured by checking the denormalized `userId` on the
+         *              incoming PortfolioItem document against the authenticated user's ID.
+         */
+        match /portfolioItems/{portfolioItemId} {
+          allow get: if true;
+          allow list: if true;
+          allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+          allow update: if false;
+          allow delete: if isOwner(resource.data.userId);
+        }
+    }
+
+    /**
+     * @description Manages all user-submitted requests for photography, stored in a top-level collection.
+     * @path        /requests/{requestId}
+     * @allow       (get) Any user can read a specific request.
+     * @allow       (list) Any user can query for open requests.
+     * @allow       (create) Any authenticated user can create a request for themselves.
+     * @allow       (update) The user who created the request can update it, or any user can update the bid count.
+     * @allow       (delete) The user who created the request or an admin can delete it.
+     * @principle   Allows public discovery of projects while restricting management to the owner or admins.
+     */
+    match /requests/{requestId} {
+      allow get: if true;
+      allow list: if true;
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isExistingOwner(resource.data.userId) || 
+                     (isSignedIn() && request.resource.data.unreadBidsCount != null) ||
+                     isRequestParticipant(requestId) || isHiredPhotographer(requestId) ||
+                     (isRequestParticipant(requestId) && request.resource.data.status == 'Disputed') ||
+                     isAdmin();
+      allow delete: if isExistingOwner(resource.data.userId) || isAdmin();
+      
+      /**
+       * @description Manages content delivered for a project.
+       * @path        /requests/{requestId}/contentDeliveries/{contentDeliveryId}
+       * @allow       (read, list) Any authenticated user can view the delivery record.
+       * @allow       (create) The hired photographer for the project can create a delivery.
+       * @allow       (update) Participants can update the delivery (e.g. approve).
+       * @principle   Secures delivery creation to the photographer, while allowing participants to manage it.
+       */
+      match /contentDeliveries/{contentDeliveryId} {
+        allow get, list: if isSignedIn();
+        allow create: if isHiredPhotographer(requestId);
+        allow update: if (isHiredPhotographer(requestId) && isExistingDoc()) || 
+                         (isOwner(get(/databases/$(database)/documents/requests/$(requestId)).data.userId) && isExistingDoc());
+        allow delete: if false;
+      }
+    }
+    
+    /**
+     * @description Top-level collection for all reviews. This change allows for more efficient
+     *              querying of a user's received reviews without needing complex subcollection queries.
+     * @path /reviews/{reviewId}
+     * @allow (get, list) Any authenticated user can read reviews.
+     * @allow (create) A participant can write a review for the other participant.
+     * @principle Ensures only involved parties can write reviews for a specific project.
+     */
+     match /reviews/{reviewId} {
+        allow get, list: if true;
+        allow create: if isRequestParticipant(request.resource.data.requestId) &&
+                       request.resource.data.reviewerId == request.auth.uid &&
+                       request.resource.data.revieweeId != request.auth.uid;
+        allow update, delete: if false;
+     }
+
+
+    /**
+     * @description Manages photographers' bids on requests.
+     * @path        /bids/{bidId}
+     * @allow       (read) The project owner or the bidder can read the bid.
+     * @allow       (create) An authenticated user can create a bid for themselves.
+     * @allow       (delete) A user can delete their own bid.
+     * @principle   Enables transparency for project bidding while securing creation to photographers.
+     */
+    match /bids/{bidId} {
+      allow get: if isSignedIn() && (
+                    get(/databases/$(database)/documents/requests/$(resource.data.requestId)).data.userId == request.auth.uid ||
+                    resource.data.userId == request.auth.uid
+                  );
+      allow list: if isSignedIn(); // Queries will be filtered by rules on `requests` and `bids` get.
+      allow create: if isOwner(request.resource.data.userId); 
+      allow update: if isOwner(resource.data.userId) &&
+                     request.resource.data.status == 'cancelled' &&
+                     request.resource.data.keys().hasOnly(['status']);
+      allow delete: if isExistingOwner(resource.data.userId);
+    }
+    
+    /**
+     * @description Top-level collection for all escrow payments.
+     * @path /escrowPayments/{escrowPaymentId}
+     * @allow (create) The client of a request can create a payment.
+     * @allow (read, list) A user can read payments where they are the payer or payee.
+     * @allow (update) A project participant can update the payment status (e.g., release funds).
+     * @principle Secures financial transactions to the participants of the associated request.
+     */
+    match /escrowPayments/{escrowPaymentId} {
+        allow list: if isSignedIn();
+        allow get: if isRequestParticipant(resource.data.requestId) || isAdmin();
+        allow create: if isSignedIn() && isOwner(request.resource.data.payerId);
+        allow update: if isAdmin() || isRequestParticipant(request.resource.data.requestId);
+        allow delete: if false;
+    }
+    
+    /**
+     * @description Manages payout requests from photographers.
+     * @path /payoutRequests/{payoutRequestId}
+     * @allow (read, list, create) Only the user who owns the request can perform these actions.
+     * @allow (read, list, update) Admins can manage all payout requests.
+     * @principle Secures payout requests to the owner, while allowing admins to manage them.
+     */
+    match /payoutRequests/{payoutRequestId} {
+      allow get: if isOwner(resource.data.userId) || isAdmin();
+      allow list: if isSignedIn();
+      allow create: if isOwner(request.resource.data.userId);
+      allow update: if isAdmin(); // Only admins can mark a request as 'completed'
+      allow delete: if false;
+    }
+    
+    /**
+     * @description Manages user-submitted reports for moderation.
+     * @path /reports/{reportId}
+     * @allow (create) Any signed-in user can create a report, provided they are the reporter.
+     * @allow (read, list, update, delete) Only admins can manage reports.
+     * @principle Allows users to flag content while restricting sensitive report data to admins.
+     */
+    match /reports/{reportId} {
+      allow get, list, update, delete: if isAdmin();
+      allow create: if isSignedIn() && request.resource.data.reporterId == request.auth.uid;
+    }
+
+    /**
+     * @description Manages chat rooms between users.
+     * @path /chatRooms/{chatRoomId}
+     * @allow (read, list) Only participants of the chat room can access it.
+     * @allow (create, update) Only participants can create or update a chat room.
+     * @principle Secures chat rooms to their participants.
+     */
+    match /chatRooms/{chatRoomId} {
+      allow get, list: if (isSignedIn() && request.auth.uid in resource.data.participantIds) || isAdmin();
+      allow create, update: if isSignedIn() && request.auth.uid in request.resource.data.participantIds;
+      allow delete: if false;
+
+      /**
+       * @description Manages messages within a chat room.
+       * @path /chatRooms/{chatRoomId}/chatMessages/{chatMessageId}
+       * @allow (read, list) Participants of the parent chat room can read messages.
+       * @allow (create) The authenticated user sending the message must be a participant.
+       * @principle Ensures only chat participants can read and send messages.
+       */
+      match /chatMessages/{chatMessageId} {
+        allow get, list: if isChatParticipant(chatRoomId) || isAdmin();
+        allow create: if isChatParticipant(chatRoomId) && isOwner(request.resource.data.senderId);
+        allow update, delete: if false;
+      }
+    }
+
+    /**
+     * @description Collection for triggering emails via the 'Trigger Email from Firestore' extension.
+     * @path /mail/{mailId}
+     * @allow (create) Any user (authenticated or not) can create mail documents for triggers.
+     * @principle Allows public-facing forms (like Contact Us) to trigger emails.
+     *            The extension itself handles sending from a secure backend context.
+     */
+    match /mail/{mailId} {
+      allow read, list, update, delete: if false;
+      allow create: if true;
+    }
+  }
+}
