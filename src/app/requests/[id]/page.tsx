@@ -482,6 +482,14 @@ export default function RequestDetailPage({ params }: { params: { id: string } }
                 relatedId: request.id
             });
 
+            await sendNotification(photographerId, {
+                title: 'Please Review the Client',
+                message: `Delivery approved! Please verify your payment and leave a review for the client.`,
+                type: 'review_request',
+                link: `/requests/${request.id}`,
+                relatedId: request.id
+            });
+
             toast({ title: 'Delivery Approved!', description: 'Payment has been released to the photographer.' });
 
         } catch (error) {

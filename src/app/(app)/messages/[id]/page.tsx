@@ -3,87 +3,35 @@
 'use client';
 
 import * as React from 'react';
-import { useFirestore, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useFirestore, useUser, errorEmitter, FirestorePermissionError, initializeFirebase } from '@/firebase';
 import { collection, query, where, orderBy, onSnapshot, doc, getDoc, getDocs, writeBatch } from 'firebase/firestore';
+import { getDatabase, ref, get } from 'firebase/database';
 import type { ChatRoom, User } from '@/lib/types';
-import Link from 'next/link';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader, MessageSquare, Search } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Loader, MessageSquare } from 'lucide-react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { ChatView } from '@/components/chat/chat-view';
-import { Input } from '@/components/ui/input';
+import { ChatList } from '@/components/chat/chat-list';
 
-const ChatListItem = ({ chatRoom, partner, isActive }: { chatRoom: ChatRoom; partner: User, isActive: boolean }) => {
-    const { user } = useUser();
-    const hasUnread = user && chatRoom.hasUnreadMessages && chatRoom.hasUnreadMessages[user.uid];
-    
-    return (
-        <Link href={`/messages/${chatRoom.id}`} className="block">
-            <div className={cn(
-                "flex items-start gap-4 rounded-lg p-3 transition-colors",
-                 isActive ? "bg-muted" : "hover:bg-muted/50"
-            )}>
-                <Avatar className="h-10 w-10 border">
-                    <AvatarImage src={partner.photoURL} alt={partner.name} />
-                    <AvatarFallback>{partner?.name?.charAt(0) || '?'}</AvatarFallback>
-                </Avatar>
-                <div className="flex-1 overflow-hidden">
-                    <div className="flex items-center justify-between">
-                        <p className="truncate font-semibold">{partner.name}</p>
-                        <div className="flex items-center gap-2">
-                            {hasUnread && (
-                                <span className="h-2 w-2 rounded-full bg-blue-500" />
-                            )}
-                            <p className="text-xs text-muted-foreground">
-                                {chatRoom.lastMessage?.timestamp
-                                    ? formatDistanceToNow(chatRoom.lastMessage.timestamp.toDate(), { addSuffix: true })
-                                    : ''}
-                            </p>
-                        </div>
-                    </div>
-                     <p className={cn(
-                        "truncate text-sm",
-                        hasUnread ? "font-bold text-foreground" : "text-muted-foreground"
-                    )}>
-                        {chatRoom.lastMessage?.text || 'No messages yet'}
-                    </p>
-                </div>
-            </div>
-        </Link>
-    );
-};
-
-
-export default function MessagesPage({ params }: { params: { id: string } }) {
+export default function MessagesPage({ params, searchParams }: { params: { id: string }, searchParams: { partnerId?: string } }) {
     const firestore = useFirestore();
     const { user: currentUser } = useUser();
     const router = useRouter();
-    
+
     const [chatRooms, setChatRooms] = React.useState<ChatRoom[]>([]);
     const [usersMap, setUsersMap] = React.useState<Map<string, User>>(new Map());
     const [isLoading, setIsLoading] = React.useState(true);
     const [activeChatRoom, setActiveChatRoom] = React.useState<ChatRoom | null>(null);
-    const [searchQuery, setSearchQuery] = React.useState('');
+
+    // For "new" chats
+    const [tempPartner, setTempPartner] = React.useState<User | null>(null);
 
     const activeChatRoomId = params.id;
-    
-    const filteredChatRooms = React.useMemo(() => {
-        if (!searchQuery) return chatRooms;
-        
-        return chatRooms.filter(room => {
-            const partnerId = room.participantIds.find(id => id !== currentUser?.uid);
-            const partner = partnerId ? usersMap.get(partnerId) : undefined;
-            return partner?.name.toLowerCase().includes(searchQuery.toLowerCase());
-        });
-    }, [chatRooms, searchQuery, currentUser, usersMap]);
-
+    const newPartnerId = searchParams?.partnerId;
 
     // Fetch all chat rooms and users for the list
     React.useEffect(() => {
         if (!currentUser || !firestore) {
-            if(!currentUser) setIsLoading(false);
+            if (!currentUser) setIsLoading(false);
             return;
         };
 
@@ -95,30 +43,39 @@ export default function MessagesPage({ params }: { params: { id: string } }) {
 
         const unsubscribe = onSnapshot(chatRoomsQuery, async (snapshot) => {
             const allRooms = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as ChatRoom));
-            const rooms = allRooms.filter(room => room.lastMessage);
+            const rooms = allRooms; // Show all, even empty
             rooms.sort((a, b) => (b.lastMessage?.timestamp?.toMillis() || 0) - (a.lastMessage?.timestamp?.toMillis() || 0));
             setChatRooms(rooms);
 
             if (rooms.length > 0) {
                 const partnerIds = new Set(rooms.map(room => room.participantIds.find(id => id !== currentUser.uid)).filter(Boolean) as string[]);
-                
+
                 const newUsersMap = new Map(usersMap);
                 const idsToFetch = Array.from(partnerIds).filter(id => !newUsersMap.has(id));
 
                 if (idsToFetch.length > 0) {
-                     const usersQuery = query(collection(firestore, 'users'), where('__name__', 'in', idsToFetch));
-                     const usersSnapshot = await getDocs(usersQuery);
-                     usersSnapshot.forEach(doc => {
-                         newUsersMap.set(doc.id, { id: doc.id, ...doc.data() } as User);
-                     });
-                     setUsersMap(newUsersMap);
+                    const { database } = initializeFirebase();
+                    await Promise.all(idsToFetch.map(async (uid) => {
+                        const userRef = ref(database, `users/${uid}`);
+                        try {
+                            const snapshot = await get(userRef);
+                            if (snapshot.exists()) {
+                                newUsersMap.set(uid, { id: uid, ...snapshot.val() } as User);
+                            } else {
+                                console.warn(`User ${uid} not found in RTDB`);
+                            }
+                        } catch (err) {
+                            console.error(`Failed to fetch user ${uid} from RTDB`, err);
+                        }
+                    }));
+                    setUsersMap(newUsersMap);
                 }
             }
             setIsLoading(false);
         }, (error) => {
             console.error("Error listening to chat rooms:", error);
-            if(!error.message.includes('requires an index')) {
-                 errorEmitter.emit('permission-error', new FirestorePermissionError({
+            if (!error.message.includes('requires an index')) {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: 'chatRooms',
                     operation: 'list',
                 }));
@@ -129,10 +86,32 @@ export default function MessagesPage({ params }: { params: { id: string } }) {
         return () => unsubscribe();
     }, [currentUser, firestore]);
 
-
     // Handle fetching the specific active chat room and its participants
     React.useEffect(() => {
-        if (!currentUser || !firestore || !activeChatRoomId || activeChatRoomId === 'new') return;
+        if (!currentUser || !firestore) return;
+
+        if (activeChatRoomId === 'new') {
+            if (newPartnerId && !tempPartner) {
+                const fetchPartner = async () => {
+                    const { database } = initializeFirebase();
+                    const userRef = ref(database, `users/${newPartnerId}`);
+                    try {
+                        const snapshot = await get(userRef);
+                        if (snapshot.exists()) {
+                            const userData = { id: newPartnerId, ...snapshot.val() } as User;
+                            setTempPartner(userData);
+                            const newMap = new Map(usersMap);
+                            newMap.set(newPartnerId, userData);
+                            setUsersMap(newMap);
+                        }
+                    } catch (err) {
+                        console.error("Error fetching partner", err);
+                    }
+                };
+                fetchPartner();
+            }
+            return;
+        }
 
         const roomRef = doc(firestore, 'chatRooms', activeChatRoomId);
         const unsubscribe = onSnapshot(roomRef, async (docSnap) => {
@@ -146,10 +125,23 @@ export default function MessagesPage({ params }: { params: { id: string } }) {
                 setActiveChatRoom(room);
 
                 const partnerId = room.participantIds.find(id => id !== currentUser.uid);
-                if (partnerId && !usersMap.has(partnerId)) {
-                    const userDoc = await getDoc(doc(firestore, 'users', partnerId));
-                    if (userDoc.exists()) {
-                        setUsersMap(prev => new Map(prev).set(partnerId, { id: userDoc.id, ...userDoc.data() } as User));
+                if (partnerId) {
+                    if (!usersMap.has(partnerId)) {
+                        const { database } = initializeFirebase();
+                        const userRef = ref(database, `users/${partnerId}`);
+                        try {
+                            const snapshot = await get(userRef);
+                            if (snapshot.exists()) {
+                                const userData = { id: partnerId, ...snapshot.val() } as User;
+                                setUsersMap(prev => {
+                                    const newMap = new Map(prev);
+                                    newMap.set(partnerId, userData);
+                                    return newMap;
+                                });
+                            }
+                        } catch (err) {
+                            console.error("Error fetching partner", err);
+                        }
                     }
                 }
 
@@ -161,7 +153,7 @@ export default function MessagesPage({ params }: { params: { id: string } }) {
                 }
 
             } else {
-                 router.push('/messages'); // Room doesn't exist or user doesn't have access
+                router.push('/messages'); // Room doesn't exist or user doesn't have access
             }
         }, (error) => {
             console.error("Error fetching active chat room:", error);
@@ -170,77 +162,64 @@ export default function MessagesPage({ params }: { params: { id: string } }) {
                 operation: 'get',
             }));
         });
-        
+
         return () => unsubscribe();
-    }, [activeChatRoomId, currentUser, firestore, router, usersMap]);
+    }, [activeChatRoomId, currentUser, firestore, router, newPartnerId, usersMap]); // dependencies adjusted
 
 
     const partner = React.useMemo(() => {
+        if (activeChatRoomId === 'new') return tempPartner;
         if (!activeChatRoom || !currentUser) return null;
         const partnerId = activeChatRoom.participantIds.find(id => id !== currentUser.uid);
         return partnerId ? usersMap.get(partnerId) ?? null : null;
-    }, [activeChatRoom, currentUser, usersMap]);
+    }, [activeChatRoom, currentUser, usersMap, activeChatRoomId, tempPartner]);
 
-    if (activeChatRoomId === 'new') {
-        return (
-             <div className="flex flex-1 flex-col items-center justify-center gap-4">
-                <Loader className="h-8 w-8 animate-spin" />
-                <p className="text-muted-foreground">Starting new conversation...</p>
-            </div>
-        )
-    }
+    // Construct a temporary chat room object for new chats
+    const currentChatRoom = React.useMemo(() => {
+        if (activeChatRoomId === 'new' && currentUser && tempPartner) {
+            return {
+                id: 'new',
+                participantIds: [currentUser.uid, tempPartner.id],
+                user1Id: currentUser.uid,
+                user2Id: tempPartner.id,
+                isProjectChat: false,
+            } as ChatRoom;
+        }
+        return activeChatRoom;
+    }, [activeChatRoomId, activeChatRoom, currentUser, tempPartner]);
+
 
     return (
         <main className="flex flex-1 flex-col p-4 md:p-0">
             <div className="grid h-full flex-1 md:grid-cols-[300px_1fr]">
                 <div className="hidden flex-col border-r md:flex">
-                     <div className="p-4 space-y-4">
-                        <h1 className="font-semibold text-lg md:text-2xl">Messages</h1>
-                         <div className="relative">
-                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                            <Input 
-                                type="search" 
-                                placeholder="Search conversations..." 
-                                className="pl-8 h-9"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                    </div>
-                     {isLoading ? (
-                        <div className="flex h-full items-center justify-center">
-                            <Loader className="h-6 w-6 animate-spin" />
-                        </div>
-                    ) : filteredChatRooms.length > 0 ? (
-                        <div className="flex-1 overflow-y-auto">
-                            {filteredChatRooms.map(room => {
-                                const partnerId = room.participantIds.find(id => id !== currentUser?.uid);
-                                const partner = partnerId ? usersMap.get(partnerId) : undefined;
-                                if (!partner) return null;
-                                return <ChatListItem key={room.id} chatRoom={room} partner={partner} isActive={room.id === activeChatRoomId}/>
-                            })}
-                        </div>
-                    ) : (
-                        <div className="flex-1 p-4 text-center text-sm text-muted-foreground">
-                            {searchQuery ? `No results for "${searchQuery}"` : 'No conversations yet.'}
-                        </div>
-                    )}
+                    <ChatList
+                        chatRooms={chatRooms}
+                        usersMap={usersMap}
+                        activeChatRoomId={activeChatRoomId}
+                        currentUserId={currentUser?.uid}
+                    />
                 </div>
-                 <div className="flex flex-col">
-                    {partner && activeChatRoom ? (
-                        <ChatView partner={partner} chatRoom={activeChatRoom} allUsersMap={usersMap} />
+                <div className="flex flex-col">
+                    {partner && currentChatRoom ? (
+                        <ChatView partner={partner} chatRoom={currentChatRoom} allUsersMap={usersMap} />
                     ) : (
                         <div className="flex h-full flex-col items-center justify-center gap-4 text-center">
-                             {isLoading ? (
+                            {isLoading && activeChatRoomId !== 'new' ? (
                                 <>
-                                 <Loader className="h-8 w-8 animate-spin" />
-                                 <p>Loading conversation...</p>
+                                    <Loader className="h-8 w-8 animate-spin" />
+                                    <p>Loading conversation...</p>
+                                </>
+                            ) : activeChatRoomId === 'new' && !partner ? (
+                                <>
+                                    <Loader className="h-8 w-8 animate-spin" />
+                                    <p>Loading recipient...</p>
                                 </>
                             ) : (
                                 <>
-                                 <MessageSquare className="h-16 w-16 text-muted-foreground/50" />
-                                 <h2 className="text-2xl font-semibold">Select a conversation</h2>
-                                 <p className="text-muted-foreground">Choose one of your existing conversations to get started.</p>
+                                    <MessageSquare className="h-16 w-16 text-muted-foreground/50" />
+                                    <h2 className="text-2xl font-semibold">Select a conversation</h2>
+                                    <p className="text-muted-foreground">Choose one of your existing conversations to get started.</p>
                                 </>
                             )}
                         </div>

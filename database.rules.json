@@ -7,11 +7,13 @@
             }
         },
         "photographerProfiles": {
+            ".read": "auth != null",
             ".indexOn": [
-                "userId"
+                "userId",
+                "isAcceptingRequests"
             ],
             "$profileId": {
-                ".read": true,
+                ".read": "auth != null",
                 ".write": "auth != null && (!data.exists() || data.child('userId').val() === auth.uid) && newData.child('userId').val() === auth.uid"
             }
         },
